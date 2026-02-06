@@ -1,5 +1,5 @@
 name: "AccuKnox Container Scan"
-description: "Run AccuKnox container vulnerability scan and optionally generate SBOM"
+description: "Run AccuKnox Container Security scan and optional SBOM generation"
 
 branding:
   icon: "shield"
@@ -7,46 +7,36 @@ branding:
 
 inputs:
   accuknox_token:
-    description: "Token for authenticating with AccuKnox CSPM"
     required: true
   accuknox_label:
-    description: "Label created in AccuKnox SaaS"
     required: true
   accuknox_endpoint:
-    description: "AccuKnox CSPM endpoint URL"
     required: true
   image_name:
-    description: "Docker image name to scan"
     required: true
   tag:
-    description: "Docker image tag"
     required: false
     default: ""
   severity:
-    description: "Comma-separated severities for vulnerability gating"
     required: false
-    default: ""
+    default: "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
   soft_fail:
-    description: "Do not fail pipeline on vulnerability findings"
     required: false
     default: false
   generate_sbom:
-    description: "Generate SBOM in addition to vulnerability scan"
     required: false
     default: false
   project_name:
-    description: "AccuKnox project name (required when generate_sbom=true)"
     required: false
     default: ""
   keep_results:
-    description: "Keep scan result files"
     required: false
     default: false
 
 runs:
   using: "composite"
   steps:
-    - name: Run AccuKnox Container Scanner
+    - name: Run AccuKnox Container Scan
       shell: bash
       env:
         ACCUKNOX_TOKEN: ${{ inputs.accuknox_token }}
@@ -62,65 +52,51 @@ runs:
       run: |
         set -e
 
-              # Normalise booleans
-              GENERATE_SBOM="${GENERATE_SBOM,,}"
-              GENERATE_SBOM="${GENERATE_SBOM//[$'\t\r\n ']}"
-              
-              SOFT_FAIL="${SOFT_FAIL,,}"
-              SOFT_FAIL="${SOFT_FAIL//[$'\t\r\n ']}"
-              
-              KEEP_RESULTS="${KEEP_RESULTS,,}"
-              KEEP_RESULTS="${KEEP_RESULTS//[$'\t\r\n ']}"
-              
-              # Validate mandatory inputs
-              if [ -z "$ACCUKNOX_TOKEN" ] || [ -z "$ACCUKNOX_LABEL" ] || [ -z "$ACCUKNOX_ENDPOINT" ] || [ -z "$IMAGE_NAME" ]; then
-                echo "ERROR: accuknox_token, accuknox_label, accuknox_endpoint, image_name are required"
-                exit 1
-              fi
-              
-              # SBOM requires project name
-              if [ "$GENERATE_SBOM" = "true" ] && [ -z "$ACCUKNOX_PROJECT_NAME" ]; then
-                echo "ERROR: project_name is required when generate_sbom=true"
-                exit 1
-              fi
-              
-              # Build image reference
-              IMAGE_REF="$IMAGE_NAME"
-              [ -n "$TAG" ] && IMAGE_REF="$IMAGE_NAME:$TAG"
-              
-              # Build optional args
-              SOFT_FAIL_ARG=""
-              [ "$SOFT_FAIL" = "true" ] && SOFT_FAIL_ARG="--softfail"
-              
-              KEEP_RESULTS_ARG=""
-              [ "$KEEP_RESULTS" = "true" ] && KEEP_RESULTS_ARG="--keep-results"
-              
-              # Download scanner
-              curl -L https://github.com/accuknox/aspm-scanner-cli/releases/download/v0.14.0/accuknox-aspm-scanner -o accuknox-aspm-scanner
-              chmod +x accuknox-aspm-scanner
-              
-              # Install container tool
-              ./accuknox-aspm-scanner tool install --type container
-              
-              ########################################
-              # 1️⃣ SBOM scan (ONLY if enabled)
-              ########################################
-              if [ "$GENERATE_SBOM" = "true" ]; then
-                echo "Running SBOM generation scan..."
-                ./accuknox-aspm-scanner scan \
-                  container \
-                  --command "image $IMAGE_REF" \
-                  --container-mode \
-                  --generate-sbom
-              fi
-              
-              ########################################
-              # 2️⃣ Container vulnerability scan (ALWAYS)
-              ########################################
-              echo "Running container vulnerability scan..."
-              ./accuknox-aspm-scanner scan \
-                $SOFT_FAIL_ARG \
-                $KEEP_RESULTS_ARG \
-                container \
-                --command "image $IMAGE_REF --severity $SEVERITY" \
-                --container-mode
+        if [ -z "$ACCUKNOX_TOKEN" ] || [ -z "$ACCUKNOX_LABEL" ] || [ -z "$ACCUKNOX_ENDPOINT" ] || [ -z "$IMAGE_NAME" ]; then
+          echo "ERROR: Required inputs missing"
+          exit 1
+        fi
+
+        GENERATE_SBOM="${GENERATE_SBOM,,}"
+        SOFT_FAIL="${SOFT_FAIL,,}"
+
+        echo "Downloading AccuKnox ASPM Scanner..."
+        curl -L https://github.com/accuknox/aspm-scanner-cli/releases/download/v0.14.0/accuknox-aspm-scanner -o accuknox-aspm-scanner
+        chmod +x accuknox-aspm-scanner
+
+        echo "Installing container scan tool..."
+        ./accuknox-aspm-scanner tool install --type container
+
+        CMD="image $IMAGE_NAME"
+        [ -n "$TAG" ] && CMD="image $IMAGE_NAME:$TAG"
+
+        SOFT_FAIL_ARG=""
+        [ "$SOFT_FAIL" = "true" ] && SOFT_FAIL_ARG="--softfail"
+
+        # -------------------------------
+        # SBOM SCAN (UNCHANGED COMMAND)
+        # -------------------------------
+        if [ "$GENERATE_SBOM" = "true" ]; then
+          if [ -z "$PROJECT_NAME" ]; then
+            echo "ERROR: project_name required for SBOM"
+            exit 1
+          fi
+
+          echo "Running SBOM generation scan..."
+          ./accuknox-aspm-scanner scan \
+            container \
+            --command "$CMD" \
+            --container-mode \
+            --generate-sbom \
+            --project-name "$PROJECT_NAME"
+        fi
+
+        # -------------------------------
+        # CONTAINER VULN SCAN (UNCHANGED)
+        # -------------------------------
+        echo "Running container vulnerability scan..."
+        ./accuknox-aspm-scanner scan \
+          $SOFT_FAIL_ARG \
+          container \
+          --command "$CMD --severity $SEVERITY" \
+          --container-mode
