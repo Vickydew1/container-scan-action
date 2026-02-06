@@ -77,7 +77,7 @@ runs:
         # SBOM SCAN (UNCHANGED COMMAND)
         # -------------------------------
         if [ "$GENERATE_SBOM" = "true" ]; then
-          if [ -z "$PROJECT_NAME" ]; then
+          if [ -z "$ACCUKNOX_PROJECT_NAME" ]; then
             echo "ERROR: project_name required for SBOM"
             exit 1
           fi
@@ -88,7 +88,7 @@ runs:
             --command "$CMD" \
             --container-mode \
             --generate-sbom \
-            --project-name "$PROJECT_NAME"
+            --project-name "$ACCUKNOX_PROJECT_NAME"
         fi
 
         # -------------------------------
