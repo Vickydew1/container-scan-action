@@ -96,11 +96,14 @@ runs:
       if: ${{ inputs.generate_sbom == 'true' }}
       shell: bash
       env:
+        ACCUKNOX_TOKEN: ${{ inputs.accuknox_token }}
+        ACCUKNOX_LABEL: ${{ inputs.accuknox_label }}
+        ACCUKNOX_ENDPOINT: ${{ inputs.accuknox_endpoint }}
         ACCUKNOX_PROJECT_NAME: ${{ inputs.project_name }}
       run: |
         set -e
         echo "Running SBOM generation scan..."
-
+    
         ./accuknox-aspm-scanner scan \
           $KEEP_RESULTS_ARG \
           --project-name "$ACCUKNOX_PROJECT_NAME" \
