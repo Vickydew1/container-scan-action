@@ -62,57 +62,65 @@ runs:
       run: |
         set -e
 
-        # Basic validation
-        if [ -z "$ACCUKNOX_TOKEN" ] || [ -z "$ACCUKNOX_LABEL" ] || [ -z "$ACCUKNOX_ENDPOINT" ] || [ -z "$IMAGE_NAME" ]; then
-          echo "ERROR: accuknox_token, accuknox_label, accuknox_endpoint, and image_name are required"
-          exit 1
-        fi
-
-        # Normalize booleans
-        GENERATE_SBOM="${GENERATE_SBOM,,}"; GENERATE_SBOM="${GENERATE_SBOM//[$'\t\r\n ']}"
-        SOFT_FAIL="${SOFT_FAIL,,}"; SOFT_FAIL="${SOFT_FAIL//[$'\t\r\n ']}"
-        KEEP_RESULTS="${KEEP_RESULTS,,}"; KEEP_RESULTS="${KEEP_RESULTS//[$'\t\r\n ']}"
-
-        # Validate SBOM requirements
-        if [ "$GENERATE_SBOM" = "true" ] && [ -z "$ACCUKNOX_PROJECT_NAME" ]; then
-          echo "ERROR: project_name is required when generate_sbom=true"
-          exit 1
-        fi
-
-        echo "Downloading AccuKnox ASPM Scanner..."
-        curl -fsSL https://github.com/accuknox/aspm-scanner-cli/releases/download/v0.14.0/accuknox-aspm-scanner -o accuknox-aspm-scanner
-        chmod +x accuknox-aspm-scanner
-
-        echo "Installing container scan tool..."
-        ./accuknox-aspm-scanner tool install --type container
-
-        # Build base image command
-        BASE_CMD="image $IMAGE_NAME"
-        [ -n "$TAG" ] && BASE_CMD="image $IMAGE_NAME:$TAG"
-
-        # Optional flags
-        SOFT_FAIL_ARG=""; [ "$SOFT_FAIL" = "true" ] && SOFT_FAIL_ARG="--softfail"
-        KEEP_RESULTS_ARG=""; [ "$KEEP_RESULTS" = "true" ] && KEEP_RESULTS_ARG="--keep-results"
-
-        # ---------------- SBOM SCAN (optional) ----------------
-        if [ "$GENERATE_SBOM" = "true" ]; then
-          echo "Running SBOM generation scan..."
-          ./accuknox-aspm-scanner scan \
-            container \
-            --command "$BASE_CMD" \
-            --container-mode \
-            --generate-sbom \
-            --project-name "$ACCUKNOX_PROJECT_NAME"
-        fi
-
-        # ---------------- VULNERABILITY SCAN (always runs) ----------------
-        VULN_CMD="$BASE_CMD"
-        [ -n "$SEVERITY" ] && VULN_CMD="$VULN_CMD --severity $SEVERITY"
-
-        echo "Running container vulnerability scan..."
-        ./accuknox-aspm-scanner scan \
-          $SOFT_FAIL_ARG \
-          $KEEP_RESULTS_ARG \
-          container \
-          --command "$VULN_CMD" \
-          --container-mode
+              # Normalise booleans
+              GENERATE_SBOM="${GENERATE_SBOM,,}"
+              GENERATE_SBOM="${GENERATE_SBOM//[$'\t\r\n ']}"
+              
+              SOFT_FAIL="${SOFT_FAIL,,}"
+              SOFT_FAIL="${SOFT_FAIL//[$'\t\r\n ']}"
+              
+              KEEP_RESULTS="${KEEP_RESULTS,,}"
+              KEEP_RESULTS="${KEEP_RESULTS//[$'\t\r\n ']}"
+              
+              # Validate mandatory inputs
+              if [ -z "$ACCUKNOX_TOKEN" ] || [ -z "$ACCUKNOX_LABEL" ] || [ -z "$ACCUKNOX_ENDPOINT" ] || [ -z "$IMAGE_NAME" ]; then
+                echo "ERROR: accuknox_token, accuknox_label, accuknox_endpoint, image_name are required"
+                exit 1
+              fi
+              
+              # SBOM requires project name
+              if [ "$GENERATE_SBOM" = "true" ] && [ -z "$ACCUKNOX_PROJECT_NAME" ]; then
+                echo "ERROR: project_name is required when generate_sbom=true"
+                exit 1
+              fi
+              
+              # Build image reference
+              IMAGE_REF="$IMAGE_NAME"
+              [ -n "$TAG" ] && IMAGE_REF="$IMAGE_NAME:$TAG"
+              
+              # Build optional args
+              SOFT_FAIL_ARG=""
+              [ "$SOFT_FAIL" = "true" ] && SOFT_FAIL_ARG="--softfail"
+              
+              KEEP_RESULTS_ARG=""
+              [ "$KEEP_RESULTS" = "true" ] && KEEP_RESULTS_ARG="--keep-results"
+              
+              # Download scanner
+              curl -L https://github.com/accuknox/aspm-scanner-cli/releases/download/v0.14.0/accuknox-aspm-scanner -o accuknox-aspm-scanner
+              chmod +x accuknox-aspm-scanner
+              
+              # Install container tool
+              ./accuknox-aspm-scanner tool install --type container
+              
+              ########################################
+              # 1️⃣ SBOM scan (ONLY if enabled)
+              ########################################
+              if [ "$GENERATE_SBOM" = "true" ]; then
+                echo "Running SBOM generation scan..."
+                ./accuknox-aspm-scanner scan \
+                  container \
+                  --command "image $IMAGE_REF" \
+                  --container-mode \
+                  --generate-sbom
+              fi
+              
+              ########################################
+              # 2️⃣ Container vulnerability scan (ALWAYS)
+              ########################################
+              echo "Running container vulnerability scan..."
+              ./accuknox-aspm-scanner scan \
+                $SOFT_FAIL_ARG \
+                $KEEP_RESULTS_ARG \
+                container \
+                --command "image $IMAGE_REF --severity $SEVERITY" \
+                --container-mode
