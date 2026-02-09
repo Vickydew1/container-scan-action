@@ -1,5 +1,5 @@
 name: "AccuKnox Container Scan"
-description: "Run AccuKnox container vulnerability scan or SBOM generation"
+description: "Run AccuKnox container image vulnerability scan and optional SBOM generation"
 
 branding:
   icon: "shield"
@@ -38,7 +38,7 @@ runs:
   steps:
 
     # -----------------------------
-    # SETUP (COMMON)
+    # SETUP (COMMON, RUNS ONCE)
     # -----------------------------
     - name: Setup AccuKnox Scanner
       shell: bash
@@ -56,54 +56,59 @@ runs:
       run: |
         set -e
 
-        if [ -z "$ACCUKNOX_TOKEN" ] || [ -z "$ACCUKNOX_LABEL" ] || [ -z "$ACCUKNOX_ENDPOINT" ] || [ -z "$IMAGE_NAME" ]; then
+        # ---- Mandatory checks ----
+        if [ -z "$ACCUKNOX_TOKEN" ] || [ -z "$ACCUKNOX_LABEL" ] || \
+           [ -z "$ACCUKNOX_ENDPOINT" ] || [ -z "$IMAGE_NAME" ]; then
           echo "ERROR: Required inputs missing"
           exit 1
         fi
 
-        GENERATE_SBOM="${GENERATE_SBOM,,}"
-        GENERATE_SBOM="${GENERATE_SBOM//[$'\t\r\n ']}"
+        # ---- Normalize flags ----
+        normalize() {
+          echo "${1,,}" | tr -d '[:space:]'
+        }
+
+        GENERATE_SBOM="$(normalize "$GENERATE_SBOM")"
+        SOFT_FAIL="$(normalize "$SOFT_FAIL")"
+        KEEP_RESULTS="$(normalize "$KEEP_RESULTS")"
 
         if [ "$GENERATE_SBOM" = "true" ] && [ -z "$ACCUKNOX_PROJECT_NAME" ]; then
           echo "ERROR: project_name is required when generate_sbom is true"
           exit 1
         fi
 
-        curl -L https://github.com/accuknox/aspm-scanner-cli/releases/download/v0.14.0/accuknox-aspm-scanner -o accuknox-aspm-scanner
+        # ---- Download scanner once ----
+        echo "Downloading AccuKnox ASPM Scanner..."
+        curl -sSL https://github.com/accuknox/aspm-scanner-cli/releases/download/v0.14.0/accuknox-aspm-scanner \
+          -o accuknox-aspm-scanner
         chmod +x accuknox-aspm-scanner
 
+        echo "Installing container scan tool..."
         ./accuknox-aspm-scanner tool install --type container
 
+        # ---- Build image command ----
         CMD="image $IMAGE_NAME"
         [ -n "$TAG" ] && CMD="image $IMAGE_NAME:$TAG"
+        [ -n "$SEVERITY" ] && CMD="$CMD --severity $SEVERITY"
 
         echo "CMD=$CMD" >> $GITHUB_ENV
 
-        SOFT_FAIL="${SOFT_FAIL,,}"
-        SOFT_FAIL="${SOFT_FAIL//[$'\t\r\n ']}"
-
+        # ---- Optional args ----
         [ "$SOFT_FAIL" = "true" ] && echo "SOFT_FAIL_ARG=--softfail" >> $GITHUB_ENV || echo "SOFT_FAIL_ARG=" >> $GITHUB_ENV
-
-        KEEP_RESULTS="${KEEP_RESULTS,,}"
-        KEEP_RESULTS="${KEEP_RESULTS//[$'\t\r\n ']}"
-
         [ "$KEEP_RESULTS" = "true" ] && echo "KEEP_RESULTS_ARG=--keep-results" >> $GITHUB_ENV || echo "KEEP_RESULTS_ARG=" >> $GITHUB_ENV
 
     # -----------------------------
-    # SBOM SCAN (ONLY WHEN ENABLED)
+    # SBOM GENERATION (OPTIONAL)
     # -----------------------------
-    - name: Run SBOM generation scan
+    - name: Run SBOM Generation Scan
       if: ${{ inputs.generate_sbom == 'true' }}
       shell: bash
       env:
-        ACCUKNOX_TOKEN: ${{ inputs.accuknox_token }}
-        ACCUKNOX_LABEL: ${{ inputs.accuknox_label }}
-        ACCUKNOX_ENDPOINT: ${{ inputs.accuknox_endpoint }}
         ACCUKNOX_PROJECT_NAME: ${{ inputs.project_name }}
       run: |
         set -e
         echo "Running SBOM generation scan..."
-    
+
         ./accuknox-aspm-scanner scan \
           $KEEP_RESULTS_ARG \
           --project-name "$ACCUKNOX_PROJECT_NAME" \
@@ -113,52 +118,14 @@ runs:
           --generate-sbom
 
     # -----------------------------
-    # VULNERABILITY SCAN (DEFAULT)
+    # CONTAINER IMAGE SCAN (ALWAYS)
     # -----------------------------
-
     - name: Run AccuKnox Container Image Scan
       shell: bash
-      env:
-        ACCUKNOX_TOKEN: ${{ inputs.accuknox_token }}
-        ACCUKNOX_LABEL: ${{ inputs.accuknox_label }}
-        ACCUKNOX_ENDPOINT: ${{ inputs.accuknox_endpoint }}
-        IMAGE_NAME: ${{ inputs.image_name }}
-        TAG: ${{ inputs.tag }}
-        SEVERITY: ${{ inputs.severity }}
-        SOFT_FAIL: ${{ inputs.soft_fail }}
       run: |
         set -e
-    
-        # ---- Mandatory checks ----
-        if [ -z "$ACCUKNOX_TOKEN" ] || [ -z "$ACCUKNOX_LABEL" ] || [ -z "$ACCUKNOX_ENDPOINT" ] || [ -z "$IMAGE_NAME" ]; then
-          echo "ERROR: token, label, endpoint, and image_name must be provided!"
-          exit 1
-        fi
-    
-        echo "Downloading AccuKnox ASPM Scanner..."
-        curl -sSL https://github.com/accuknox/aspm-scanner-cli/releases/download/v0.13.4/accuknox-aspm-scanner -o accuknox-aspm-scanner
-        chmod +x accuknox-aspm-scanner
-    
-        echo "Installing container scan tool..."
-        ./accuknox-aspm-scanner tool install --type container
-    
-        # ---- Soft fail handling ----
-        SOFT_FAIL="${SOFT_FAIL,,}"
-        SOFT_FAIL="${SOFT_FAIL//[$'\t\r\n ']}"
-    
-        SOFT_FAIL_ARG=""
-        if [ "$SOFT_FAIL" = "true" ]; then
-          SOFT_FAIL_ARG="--softfail"
-        fi
-    
-        # ---- Build image command ----
-        CMD="image $IMAGE_NAME"
-        [ -n "$TAG" ] && CMD="image $IMAGE_NAME:$TAG"
-        [ -n "$SEVERITY" ] && CMD="$CMD --severity $SEVERITY"
-    
         echo "Running AccuKnox container image scan..."
-        echo "./accuknox-aspm-scanner scan $SOFT_FAIL_ARG container --command \"$CMD\" --container-mode"
-    
+
         ./accuknox-aspm-scanner scan \
           $SOFT_FAIL_ARG \
           container \
