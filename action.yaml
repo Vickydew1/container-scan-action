@@ -86,7 +86,6 @@ runs:
 
         [ "$KEEP_RESULTS" = "true" ] && echo "KEEP_RESULTS_ARG=--keep-results" >> $GITHUB_ENV || echo "KEEP_RESULTS_ARG=" >> $GITHUB_ENV
 
-    # SBOM SCAN (ONLY WHEN ENABLED)
     - name: Run SBOM generation scan
       if: ${{ inputs.generate_sbom == 'true' }}
       shell: bash
@@ -95,17 +94,34 @@ runs:
         ACCUKNOX_LABEL: ${{ inputs.accuknox_label }}
         ACCUKNOX_ENDPOINT: ${{ inputs.accuknox_endpoint }}
         ACCUKNOX_PROJECT_NAME: ${{ inputs.project_name }}
+        IMAGE_NAME: ${{ inputs.image_name }}
+        TAG: ${{ inputs.tag }}
+        KEEP_RESULTS: ${{ inputs.keep_results }}
       run: |
         set -e
-        echo "Running SBOM generation scan..."
+    
+        if [ -z "$ACCUKNOX_PROJECT_NAME" ]; then
+          echo "ERROR: project_name is mandatory for SBOM generation"
+          exit 1
+        fi
+    
+        KEEP_RESULTS="${KEEP_RESULTS,,}"
+        KEEP_RESULTS="${KEEP_RESULTS//[$'\t\r\n ']}"
+        KEEP_RESULTS_ARG=""
+        [ "$KEEP_RESULTS" = "true" ] && KEEP_RESULTS_ARG="--keep-results"
+    
+        CMD="image $IMAGE_NAME"
+        [ -n "$TAG" ] && CMD="image $IMAGE_NAME:$TAG"
+    
+        echo "Running SBOM generation scan for project: $ACCUKNOX_PROJECT_NAME"
     
         ./accuknox-aspm-scanner scan \
-          $KEEP_RESULTS_ARG \
-          --project-name "$ACCUKNOX_PROJECT_NAME" \
           container \
           --command "$CMD" \
           --container-mode \
-          --generate-sbom
+          --generate-sbom \
+          --project-name "$ACCUKNOX_PROJECT_NAME" \
+          $KEEP_RESULTS_ARG
 
     # VULNERABILITY SCAN (DEFAULT)
 
