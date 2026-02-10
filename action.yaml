@@ -114,12 +114,12 @@ runs:
         echo "🧾 Running SBOM scan..."
 
         ./accuknox-aspm-scanner scan \
+          $KEEP_RESULTS_ARG \
+          --project-name "$ACCUKNOX_PROJECT_NAME" \
           container \
           --command "$CMD" \
           --container-mode \
-          --generate-sbom \
-          --project-name "$ACCUKNOX_PROJECT_NAME" \
-          $KEEP_RESULTS_ARG
+          --generate-sbom
 
     # ----------------------------------------------------
     # VULNERABILITY SCAN
