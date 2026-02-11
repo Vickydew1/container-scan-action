@@ -128,6 +128,8 @@ runs:
           container \
           --command "$CMD" \
           --container-mode
+          
+         mv results.json results-container.json
         
         if [ "$GENERATE_SBOM" = "true" ]; then
           echo "Running AccuKnox SBOM scan..."
@@ -139,4 +141,16 @@ runs:
             --command "$CMD" \
             --container-mode \
             --generate-sbom
+
+          mv results.json results-sbom.json
         fi
+
+    - name: Upload AccuKnox Scan Results
+      if: inputs.keep_results == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: accuknox-scan-results
+        path: |
+          results-container.json
+          results-sbom.json
+        retention-days: 15
