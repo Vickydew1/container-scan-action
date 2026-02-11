@@ -135,6 +135,7 @@ runs:
 
         
         if [ "$GENERATE_SBOM" = "true" ]; then
+          rm -f results.json
           echo "Running AccuKnox SBOM scan..."
           ./accuknox-aspm-scanner scan \
             $SOFT_FAIL_ARG \
