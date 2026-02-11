@@ -122,28 +122,16 @@ runs:
             exit 1
           fi
         
-          # Sanitise project name (keep spaces)
           SAFE_PROJECT_NAME="$(echo "$ACCUKNOX_PROJECT_NAME" | sed 's/[^a-zA-Z0-9 ._-]/_/g')"
         
-          if [ -z "$SAFE_PROJECT_NAME" ]; then
-            echo "ERROR: project_name is empty after sanitization"
-            exit 1
-          fi
-        
           echo "Running AccuKnox SBOM generation:"
-          echo "./accuknox-aspm-scanner scan \
-        $SOFT_FAIL_ARG \
-        $KEEP_RESULTS_ARG \
-        --project-name \"$SAFE_PROJECT_NAME\" \
-        container \
-        --command \"$CMD\" \
-        --container-mode \
-        --generate-sbom"
+          echo "./accuknox-aspm-scanner --project-name \"$SAFE_PROJECT_NAME\" scan ..."
         
-          ./accuknox-aspm-scanner scan \
+          ./accuknox-aspm-scanner \
+            --project-name "$SAFE_PROJECT_NAME" \
+            scan \
             $SOFT_FAIL_ARG \
             $KEEP_RESULTS_ARG \
-            --project-name "$SAFE_PROJECT_NAME" \
             container \
             --command "$CMD" \
             --container-mode \
