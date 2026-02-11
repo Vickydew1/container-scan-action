@@ -61,77 +61,80 @@ runs:
         KEEP_RESULTS: ${{ inputs.keep_results }}
 
       run: |
-        set -e
-
+        set -euo pipefail
+        
         # -------------------------
         # Validate required inputs
         # -------------------------
-        if [ -z "$ACCUKNOX_TOKEN" ] || [ -z "$ACCUKNOX_LABEL" ] || \
-           [ -z "$ACCUKNOX_ENDPOINT" ] || [ -z "$IMAGE_NAME" ]; then
-          echo "ERROR: token, label, endpoint, and image_name are required"
+        if [ -z "${ACCUKNOX_TOKEN:-}" ] || \
+           [ -z "${ACCUKNOX_LABEL:-}" ] || \
+           [ -z "${ACCUKNOX_ENDPOINT:-}" ] || \
+           [ -z "${IMAGE_NAME:-}" ]; then
+          echo "ERROR: ACCUKNOX_TOKEN, ACCUKNOX_LABEL, ACCUKNOX_ENDPOINT, and IMAGE_NAME are required"
           exit 1
         fi
-
+        
+        TAG="${TAG:-latest}"
+        SEVERITY="${SEVERITY:-UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL}"
+        GENERATE_SBOM="${GENERATE_SBOM:-false}"
+        SOFT_FAIL="${SOFT_FAIL:-false}"
+        KEEP_RESULTS="${KEEP_RESULTS:-false}"
+        
         # -------------------------
         # Normalize booleans
         # -------------------------
         SOFT_FAIL="${SOFT_FAIL,,}"
         GENERATE_SBOM="${GENERATE_SBOM,,}"
         KEEP_RESULTS="${KEEP_RESULTS,,}"
-
+        
         SOFT_FAIL_ARG=""
         [ "$SOFT_FAIL" = "true" ] && SOFT_FAIL_ARG="--softfail"
-
+        
         KEEP_RESULTS_ARG=""
         [ "$KEEP_RESULTS" = "true" ] && KEEP_RESULTS_ARG="--keep-results"
-
+        
         # -------------------------
         # Download scanner
         # -------------------------
-        curl -sL https://github.com/accuknox/aspm-scanner-cli/releases/download/v0.14.0/accuknox-aspm-scanner \
+        curl -sL \
+          https://github.com/accuknox/aspm-scanner-cli/releases/download/v0.14.0/accuknox-aspm-scanner \
           -o accuknox-aspm-scanner
+        
         chmod +x accuknox-aspm-scanner
-
+        
         ./accuknox-aspm-scanner tool install --type container
-
-        touch results.json
-        chmod 666 results.json
-
-        # -------------------------
-        # Build commands
-        # -------------------------
-        CMD_VULN="image $IMAGE_NAME:$TAG --severity $SEVERITY"
-        CMD_SBOM="image $IMAGE_NAME:$TAG --severity $SEVERITY"
-
+        
         # -------------------------
         # Vulnerability Scan
         # -------------------------
         echo "Running vulnerability scan..."
+        
         ./accuknox-aspm-scanner scan \
           $SOFT_FAIL_ARG \
           $KEEP_RESULTS_ARG \
           container \
-          --command "$CMD_VULN" \
+          --command "image ${IMAGE_NAME}:${TAG} --severity ${SEVERITY}" \
           --container-mode
-
+        
         mv results.json results-container.json
-
+        
         # -------------------------
-        # SBOM Scan (CORRECT)
+        # SBOM Scan
         # -------------------------
         if [ "$GENERATE_SBOM" = "true" ]; then
-          if [ -z "$ACCUKNOX_PROJECT_NAME" ]; then
-            echo "ERROR: project_name is required for SBOM"
+          if [ -z "${ACCUKNOX_PROJECT_NAME:-}" ]; then
+            echo "ERROR: ACCUKNOX_PROJECT_NAME is required for SBOM"
             exit 1
           fi
         
           echo "Running SBOM scan..."
+        
           ./accuknox-aspm-scanner scan \
             $SOFT_FAIL_ARG \
             $KEEP_RESULTS_ARG \
             --project-name "$ACCUKNOX_PROJECT_NAME" \
             container \
-            --command "image $IMAGE_NAME:$TAG --severity $SEVERITY" \
+            --command "image ${IMAGE_NAME}:${TAG} --severity ${SEVERITY}" \
             --container-mode \
             --generate-sbom
         
