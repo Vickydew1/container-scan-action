@@ -128,7 +128,8 @@ runs:
           container \
           --command "$CMD" \
           --container-mode
-          
+
+        cp results.json results-sbom.json
         
         if [ "$GENERATE_SBOM" = "true" ]; then
           echo "Running AccuKnox SBOM scan..."
@@ -141,7 +142,7 @@ runs:
             --container-mode \
             --generate-sbom
 
-          mv results.json results-sbom.json
+          cp results.json results-sbom.json
         fi
 
     - name: Upload AccuKnox Scan Results
