@@ -129,7 +129,7 @@ runs:
           --command "$CMD" \
           --container-mode
 
-        if [ "$KEEP_RESULTS" = "true" ] && [ -f results.json ]; then
+        if [ "$KEEP_RESULTS" = "true" ]; then
           cp results.json results-vuln.json
         fi
         
@@ -144,7 +144,7 @@ runs:
             --container-mode \
             --generate-sbom
 
-          if [ "$KEEP_RESULTS" = "true" ] && [ -f results.json ]; then
+          if [ "$KEEP_RESULTS" = "true" ]; then
             cp results.json results-sbom.json
           fi
         fi
