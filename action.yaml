@@ -23,23 +23,23 @@ inputs:
     required: false
     default: "latest"
   severity:
-    description: "Comma-separated severities: UNKNOWN, LOW, MEDIUM, HIGH, CRITICAL"
+    description: "Comma-separated severities"
     required: false
     default: "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
   soft_fail:
-    description: "Do not return an error code if there are failed checks"
+    description: "Do not fail pipeline on findings"
     required: false
     default: false
   generate_sbom:
-    description: "Generate Software Bill of Materials (SBOM)"
+    description: "Generate SBOM"
     required: false
     default: false
   project_name:
-    description: "Project name (AccuKnox entity) - Required for SBOM uploads"
+    description: "AccuKnox Project Name (required for SBOM)"
     required: false
     default: ""
   keep_results:
-    description: "Keep scan results file after completion"
+    description: "Upload scan results as artifacts"
     required: false
     default: false
 
@@ -59,15 +59,22 @@ runs:
         GENERATE_SBOM: ${{ inputs.generate_sbom }}
         ACCUKNOX_PROJECT_NAME: ${{ inputs.project_name }}
         KEEP_RESULTS: ${{ inputs.keep_results }}
+
       run: |
         set -e
 
-        if [ -z "$ACCUKNOX_TOKEN" ] || [ -z "$ACCUKNOX_LABEL" ] || [ -z "$ACCUKNOX_ENDPOINT" ] || [ -z "$IMAGE_NAME" ]; then
-          echo "ERROR: token, label, endpoint, and image_name must be provided!"
+        # -------------------------
+        # Validate required inputs
+        # -------------------------
+        if [ -z "$ACCUKNOX_TOKEN" ] || [ -z "$ACCUKNOX_LABEL" ] || \
+           [ -z "$ACCUKNOX_ENDPOINT" ] || [ -z "$IMAGE_NAME" ]; then
+          echo "ERROR: token, label, endpoint, and image_name are required"
           exit 1
         fi
 
-        # Normalise flags
+        # -------------------------
+        # Normalize booleans
+        # -------------------------
         SOFT_FAIL="${SOFT_FAIL,,}"
         GENERATE_SBOM="${GENERATE_SBOM,,}"
         KEEP_RESULTS="${KEEP_RESULTS,,}"
@@ -78,75 +85,65 @@ runs:
         KEEP_RESULTS_ARG=""
         [ "$KEEP_RESULTS" = "true" ] && KEEP_RESULTS_ARG="--keep-results"
 
-        PROJECT_NAME_ARGS=()
-        if [ -n "$ACCUKNOX_PROJECT_NAME" ]; then
-          PROJECT_NAME_ARGS+=(--project-name "$ACCUKNOX_PROJECT_NAME")
-        fi
-
-        echo "Downloading AccuKnox ASPM Scanner..."
-        curl -L https://github.com/accuknox/aspm-scanner-cli/releases/download/v0.14.0/accuknox-aspm-scanner -o accuknox-aspm-scanner
+        # -------------------------
+        # Download scanner
+        # -------------------------
+        curl -sL https://github.com/accuknox/aspm-scanner-cli/releases/download/v0.14.0/accuknox-aspm-scanner \
+          -o accuknox-aspm-scanner
         chmod +x accuknox-aspm-scanner
 
-        touch ./results.json
-        chmod 666 ./results.json
-
-        echo "Installing container scan tool..."
         ./accuknox-aspm-scanner tool install --type container
 
-        # Build scan command (UNCHANGED)
-        CMD="image $IMAGE_NAME"
-        [ -n "$TAG" ] && CMD="image $IMAGE_NAME:$TAG"
-        [ -n "$SEVERITY" ] && CMD="$CMD --severity $SEVERITY"
+        touch results.json
+        chmod 666 results.json
 
-        GENERATE_SBOM_ARG=""
-        if [ "$GENERATE_SBOM" = "true" ]; then
-          GENERATE_SBOM_ARG="--generate-sbom"
-        fi
+        # -------------------------
+        # Build commands
+        # -------------------------
+        CMD_VULN="image $IMAGE_NAME:$TAG --severity $SEVERITY"
+        CMD_SBOM="image $IMAGE_NAME:$TAG"
 
-        # -----------------------------
-        # Vulnerability Scan (ALWAYS)
-        # -----------------------------
-        echo "Running AccuKnox vulnerability scan:"
-        echo "./accuknox-aspm-scanner scan $SOFT_FAIL_ARG $KEEP_RESULTS_ARG container --command \"$CMD\" --container-mode"
-
+        # -------------------------
+        # Vulnerability Scan
+        # -------------------------
+        echo "Running vulnerability scan..."
         ./accuknox-aspm-scanner scan \
           $SOFT_FAIL_ARG \
           $KEEP_RESULTS_ARG \
           container \
-          --command "$CMD" \
+          --command "$CMD_VULN" \
           --container-mode
 
         mv results.json results-container.json
 
-        # --------------------------------
-        # SBOM Scan (CONDITIONAL)
-        # --------------------------------
+        # -------------------------
+        # SBOM Scan
+        # -------------------------
         if [ "$GENERATE_SBOM" = "true" ]; then
           if [ -z "$ACCUKNOX_PROJECT_NAME" ]; then
-            echo "ERROR: project_name is required when generate_sbom is true!"
+            echo "ERROR: project_name is required for SBOM"
             exit 1
           fi
-        
-          echo "Running AccuKnox SBOM generation:"
-        
+
+          echo "Running SBOM scan..."
           ./accuknox-aspm-scanner scan \
+            --project-name "$ACCUKNOX_PROJECT_NAME" \
             $SOFT_FAIL_ARG \
             $KEEP_RESULTS_ARG \
-            "${PROJECT_NAME_ARGS[@]}" \
             container \
-            --command "$CMD" \
-            --container-mode \
-            $GENERATE_SBOM_ARG
-        
+            --generate-sbom \
+            --command "$CMD_SBOM" \
+            --container-mode
+
           mv results.json results-sbom.json
         fi
-        
+
     - name: Upload AccuKnox Scan Results
       if: inputs.keep_results == 'true'
       uses: actions/upload-artifact@v4
       with:
         name: accuknox-scan-results
         path: |
-          results*.json
+          results-container.json
+          results-sbom.json
         retention-days: 15
-      
