@@ -129,7 +129,6 @@ runs:
           --command "$CMD" \
           --container-mode
           
-         mv results.json results-container.json
         
         if [ "$GENERATE_SBOM" = "true" ]; then
           echo "Running AccuKnox SBOM scan..."
@@ -151,6 +150,5 @@ runs:
       with:
         name: accuknox-scan-results
         path: |
-          results-container.json
-          results-sbom.json
+          results-*.json
         retention-days: 15
