@@ -123,7 +123,6 @@ runs:
           fi
         
           echo "Running AccuKnox SBOM generation:"
-          echo "./accuknox-aspm-scanner scan --project-name \"$ACCUKNOX_PROJECT_NAME\" container ..."
         
           ./accuknox-aspm-scanner scan \
             $SOFT_FAIL_ARG \
