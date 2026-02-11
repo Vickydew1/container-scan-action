@@ -78,10 +78,10 @@ runs:
         KEEP_RESULTS_ARG=""
         [ "$KEEP_RESULTS" = "true" ] && KEEP_RESULTS_ARG="--keep-results"
 
-        PROJECT_NAME_ARG=""
-        if [ -n "$ACCUKNOX_PROJECT_NAME" ]; then
-          PROJECT_NAME_ARG="--project-name \"$ACCUKNOX_PROJECT_NAME\""
-        fi
+        # PROJECT_NAME_ARG=""
+        # if [ -n "$ACCUKNOX_PROJECT_NAME" ]; then
+        #   PROJECT_NAME_ARG="--project-name \"$ACCUKNOX_PROJECT_NAME\""
+        # fi
 
         echo "Downloading AccuKnox ASPM Scanner..."
         curl -L https://github.com/accuknox/aspm-scanner-cli/releases/download/v0.14.0/accuknox-aspm-scanner -o accuknox-aspm-scanner
@@ -126,7 +126,7 @@ runs:
           ./accuknox-aspm-scanner scan \
             $SOFT_FAIL_ARG \
             $KEEP_RESULTS_ARG \
-            $PROJECT_NAME_ARG \
+            --project-name "$ACCUKNOX_PROJECT_NAME" \
             container \
             --command "$CMD" \
             --container-mode \
