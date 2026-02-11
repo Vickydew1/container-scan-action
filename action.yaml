@@ -117,24 +117,24 @@ runs:
         mv results.json results-container.json
 
         # -------------------------
-        # SBOM Scan (FIXED)
+        # SBOM Scan (CORRECT)
         # -------------------------
         if [ "$GENERATE_SBOM" = "true" ]; then
           if [ -z "$ACCUKNOX_PROJECT_NAME" ]; then
             echo "ERROR: project_name is required for SBOM"
             exit 1
           fi
-
+        
           echo "Running SBOM scan..."
           ./accuknox-aspm-scanner scan \
             $SOFT_FAIL_ARG \
             $KEEP_RESULTS_ARG \
             --project-name "$ACCUKNOX_PROJECT_NAME" \
             container \
-            --command "$CMD_SBOM" \
+            --command "image $IMAGE_NAME:$TAG --severity $SEVERITY" \
             --container-mode \
             --generate-sbom
-
+        
           mv results.json results-sbom.json
         fi
 
