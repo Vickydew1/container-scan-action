@@ -80,7 +80,7 @@ runs:
 
         PROJECT_NAME_ARG=""
         if [ -n "$ACCUKNOX_PROJECT_NAME" ]; then
-          PROJECT_NAME_ARG="--project-name $ACCUKNOX_PROJECT_NAME"
+          PROJECT_NAME_ARG="--project-name \"$ACCUKNOX_PROJECT_NAME\""
         fi
 
         echo "Downloading AccuKnox ASPM Scanner..."
@@ -99,7 +99,7 @@ runs:
         [ -n "$SEVERITY" ] && CMD="$CMD --severity $SEVERITY"
 
         # -----------------------------
-        # 1️⃣ Vulnerability Scan (ALWAYS)
+        # Vulnerability Scan (ALWAYS)
         # -----------------------------
         echo "Running AccuKnox vulnerability scan:"
         echo "./accuknox-aspm-scanner scan $SOFT_FAIL_ARG $KEEP_RESULTS_ARG container --command \"$CMD\" --container-mode"
@@ -112,7 +112,7 @@ runs:
           --container-mode
 
         # --------------------------------
-        # 2️⃣ SBOM Scan (CONDITIONAL)
+        # SBOM Scan (CONDITIONAL)
         # --------------------------------
         if [ "$GENERATE_SBOM" = "true" ]; then
           if [ -z "$ACCUKNOX_PROJECT_NAME" ]; then
