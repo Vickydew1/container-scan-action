@@ -110,7 +110,7 @@ runs:
          # Build project name argument
         PROJECT_NAME_ARG=""
         if [ -n "$ACCUKNOX_PROJECT_NAME" ]; then
-          PROJECT_NAME_ARG="--project-name $ACCUKNOX_PROJECT_NAME"
+          PROJECT_NAME_ARG="--project-name \"$ACCUKNOX_PROJECT_NAME\""
         fi
 
         # Build scan command dynamically
