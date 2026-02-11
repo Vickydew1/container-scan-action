@@ -124,13 +124,13 @@ runs:
         echo "Running AccuKnox vulnerability scan..."
         ./accuknox-aspm-scanner scan \
           $SOFT_FAIL_ARG \
+          $KEEP_RESULTS_ARG \
           container \
           --command "$CMD" \
           --container-mode
-
-        if [ "$KEEP_RESULTS" = "true" ] && [ -f results.json ]; then
+          
           cp results.json results-vuln.json
-        fi
+
         
         if [ "$GENERATE_SBOM" = "true" ]; then
           echo "Running AccuKnox SBOM scan..."
@@ -143,9 +143,7 @@ runs:
             --container-mode \
             --generate-sbom
 
-          if [ "$KEEP_RESULTS" = "true" ] && [ -f results.json ]; then
             cp results.json results-sbom.json
-          fi
         fi
 
     - name: Upload AccuKnox Scan Results
