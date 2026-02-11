@@ -21,7 +21,7 @@ inputs:
   tag:
     description: "Docker image tag (optional)"
     required: false
-    default: ""
+    default: "latest"
   severity:
     description: "Comma-separated severities: UNKNOWN, LOW, MEDIUM, HIGH, CRITICAL"
     required: false
@@ -67,7 +67,7 @@ runs:
           exit 1
         fi
 
-        # Normalize flags
+        # Normalise flags
         SOFT_FAIL="${SOFT_FAIL,,}"
         GENERATE_SBOM="${GENERATE_SBOM,,}"
         KEEP_RESULTS="${KEEP_RESULTS,,}"
@@ -132,3 +132,12 @@ runs:
             --container-mode \
             --generate-sbom
         fi
+        
+    - name: Upload AccuKnox Scan Results
+      if: inputs.keep_results == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: accuknox-scan-results
+        path: |
+          results*.json
+      
