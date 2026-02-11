@@ -101,7 +101,7 @@ runs:
         # Build commands
         # -------------------------
         CMD_VULN="image $IMAGE_NAME:$TAG --severity $SEVERITY"
-        CMD_SBOM="image $IMAGE_NAME:$TAG"
+        CMD_SBOM="image $IMAGE_NAME:$TAG --severity $SEVERITY"
 
         # -------------------------
         # Vulnerability Scan
@@ -117,7 +117,7 @@ runs:
         mv results.json results-container.json
 
         # -------------------------
-        # SBOM Scan
+        # SBOM Scan (FIXED)
         # -------------------------
         if [ "$GENERATE_SBOM" = "true" ]; then
           if [ -z "$ACCUKNOX_PROJECT_NAME" ]; then
@@ -127,13 +127,13 @@ runs:
 
           echo "Running SBOM scan..."
           ./accuknox-aspm-scanner scan \
-            --project-name "$ACCUKNOX_PROJECT_NAME" \
             $SOFT_FAIL_ARG \
             $KEEP_RESULTS_ARG \
+            --project-name "$ACCUKNOX_PROJECT_NAME" \
             container \
-            --generate-sbom \
             --command "$CMD_SBOM" \
-            --container-mode
+            --container-mode \
+            --generate-sbom
 
           mv results.json results-sbom.json
         fi
