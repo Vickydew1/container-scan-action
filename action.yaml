@@ -78,10 +78,10 @@ runs:
         KEEP_RESULTS_ARG=""
         [ "$KEEP_RESULTS" = "true" ] && KEEP_RESULTS_ARG="--keep-results"
 
-        # PROJECT_NAME_ARG=""
-        # if [ -n "$ACCUKNOX_PROJECT_NAME" ]; then
-        #   PROJECT_NAME_ARG="--project-name \"$ACCUKNOX_PROJECT_NAME\""
-        # fi
+        PROJECT_NAME_ARGS=()
+        if [ -n "$ACCUKNOX_PROJECT_NAME" ]; then
+          PROJECT_NAME_ARGS+=(--project-name "$ACCUKNOX_PROJECT_NAME")
+        fi
 
         echo "Downloading AccuKnox ASPM Scanner..."
         curl -L https://github.com/accuknox/aspm-scanner-cli/releases/download/v0.14.0/accuknox-aspm-scanner -o accuknox-aspm-scanner
@@ -97,6 +97,11 @@ runs:
         CMD="image $IMAGE_NAME"
         [ -n "$TAG" ] && CMD="image $IMAGE_NAME:$TAG"
         [ -n "$SEVERITY" ] && CMD="$CMD --severity $SEVERITY"
+
+        GENERATE_SBOM_ARG=""
+        if [ "$GENERATE_SBOM" = "true" ]; then
+          GENERATE_SBOM_ARG="--generate-sbom"
+        fi
 
         # -----------------------------
         # Vulnerability Scan (ALWAYS)
@@ -127,11 +132,11 @@ runs:
           ./accuknox-aspm-scanner scan \
             $SOFT_FAIL_ARG \
             $KEEP_RESULTS_ARG \
-            --project-name "$ACCUKNOX_PROJECT_NAME" \
+            "${PROJECT_NAME_ARGS[@]}" \
             container \
             --command "$CMD" \
             --container-mode \
-            --generate-sbom
+            $GENERATE_SBOM_ARG
         
           mv results.json results-sbom.json
         fi
