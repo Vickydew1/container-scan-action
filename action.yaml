@@ -111,6 +111,8 @@ runs:
           --command "$CMD" \
           --container-mode
 
+        mv results.json results-container.json
+
         # --------------------------------
         # SBOM Scan (CONDITIONAL)
         # --------------------------------
@@ -131,6 +133,8 @@ runs:
             --command "$CMD" \
             --container-mode \
             --generate-sbom
+
+          mv results.json results-sbom.json
         fi
         
     - name: Upload AccuKnox Scan Results
