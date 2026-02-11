@@ -122,16 +122,13 @@ runs:
             exit 1
           fi
         
-          SAFE_PROJECT_NAME="$(echo "$ACCUKNOX_PROJECT_NAME" | sed 's/[^a-zA-Z0-9 ._-]/_/g')"
-        
           echo "Running AccuKnox SBOM generation:"
-          echo "./accuknox-aspm-scanner --project-name \"$SAFE_PROJECT_NAME\" scan ..."
+          echo "./accuknox-aspm-scanner scan --project-name \"$ACCUKNOX_PROJECT_NAME\" container ..."
         
-          ./accuknox-aspm-scanner \
-            --project-name "$SAFE_PROJECT_NAME" \
-            scan \
+          ./accuknox-aspm-scanner scan \
             $SOFT_FAIL_ARG \
             $KEEP_RESULTS_ARG \
+            --project-name "$ACCUKNOX_PROJECT_NAME" \
             container \
             --command "$CMD" \
             --container-mode \
