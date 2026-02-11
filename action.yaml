@@ -108,9 +108,9 @@ runs:
         fi
 
          # Build project name argument
-        PROJECT_NAME_ARG=""
+        PROJECT_NAME_ARGS=()
         if [ -n "$ACCUKNOX_PROJECT_NAME" ]; then
-          PROJECT_NAME_ARG="--project-name \"$ACCUKNOX_PROJECT_NAME\""
+          PROJECT_NAME_ARGS=(--project-name "$ACCUKNOX_PROJECT_NAME")
         fi
 
         # Build scan command dynamically
@@ -128,21 +128,22 @@ runs:
           container \
           --command "$CMD" \
           --container-mode
+          
+          cp results.json results-vuln.json
 
-        cp results.json results-sbom.json
         
         if [ "$GENERATE_SBOM" = "true" ]; then
           echo "Running AccuKnox SBOM scan..."
           ./accuknox-aspm-scanner scan \
             $SOFT_FAIL_ARG \
             $KEEP_RESULTS_ARG \
-            $PROJECT_NAME_ARG \
+            "${PROJECT_NAME_ARGS[@]}" \
             container \
             --command "$CMD" \
             --container-mode \
             --generate-sbom
 
-          cp results.json results-sbom.json
+              cp results.json results-sbom.json
         fi
 
     - name: Upload AccuKnox Scan Results
