@@ -9,7 +9,7 @@ inputs:
   dockerfile_context:
     description: "The context of the Dockerfile to use for building the image (optional if image already exists)."
     required: false
-    default: "Dockerfile"
+    default: ""
   accuknox_token:
     description: "The token for authenticating with the CSPM panel."
     required: true
