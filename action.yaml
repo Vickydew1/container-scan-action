@@ -156,4 +156,4 @@ runs:
         name: accuknox-scan-results
         path: |
           results-*.json
-        retention-days: 15
+        retention-days: 30
