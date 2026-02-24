@@ -132,7 +132,7 @@ runs:
           --command "$CMD" \
           --container-mode
 
-        mv results.json results-vuln.json
+        cp results.json results-vuln.json
  
         if [ "$GENERATE_SBOM" = "true" ]; then
           echo "Running AccuKnox SBOM scan..."
@@ -145,7 +145,7 @@ runs:
             --container-mode \
             --generate-sbom
 
-          mv results.json results-sbom.json
+          cp results.json results-sbom.json
           
         fi
 
